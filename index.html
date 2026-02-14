@@ -48,44 +48,25 @@ async function loadTree() {
     renderTree(originalTree);
 }
 
-// Рекурсивная функция для Treant.js
+// Рекурсивная функция для Treant.js с разворачиваемыми узлами
 function buildTreantNode(person){
     const node = {
         text: { name: person.name },
         HTMLclass: person.color,
-        children: []
+        children: [],
+        _children: []
     };
     if(person.children && person.children.length > 0){
-        node.children = person.children.map(c => buildTreantNode(c));
-        node._children = [...node.children]; // для сворачивания
-        node.children = []; // изначально свернуто
-        node.clickable = true;
+        node._children = person.children.map(c => buildTreantNode(c));
+        node.children = []; // свернуто изначально
     }
     return node;
 }
 
-// Рендер Treant.js с кликабельными родителями
+// Рендер Treant.js
 let chart = null;
 function renderTree(nodeStructure){
     if(chart){ document.getElementById("treeContainer").innerHTML=""; chart=null; }
-
-    function attachClicks(node){
-        if(node.clickable){
-            const el = node.node;
-            if(el){
-                el.style.cursor = "pointer";
-                el.onclick = () => {
-                    if(node.children.length === 0){
-                        node.children = node._children;
-                    } else {
-                        node.children = [];
-                    }
-                    renderTree(originalTree);
-                }
-            }
-            if(node.children) node.children.forEach(attachClicks);
-        }
-    }
 
     chart = new Treant({
         chart:{
@@ -98,10 +79,31 @@ function renderTree(nodeStructure){
         nodeStructure: nodeStructure
     });
 
-    attachClicks(nodeStructure);
+    // Навешиваем клики после небольшой задержки, чтобы Treant успел создать DOM
+    setTimeout(() => attachClicks(nodeStructure), 50);
 }
 
-// Сброс дерева
+// Навешиваем клики на узлы с детьми
+function attachClicks(node){
+    if(node._children && node._children.length > 0){
+        const el = node.node;
+        if(el){
+            el.style.cursor = "pointer";
+            el.onclick = () => {
+                if(node.children.length === 0){
+                    node.children = node._children;
+                } else {
+                    node.children = [];
+                }
+                renderTree(originalTree);
+            }
+        }
+        node._children.forEach(attachClicks);
+        node.children.forEach(attachClicks);
+    }
+}
+
+// Кнопка сброса дерева
 document.getElementById("resetBtn").onclick = () => renderTree(originalTree);
 
 loadTree();
