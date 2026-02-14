@@ -44,7 +44,7 @@ async function loadData() {
     createSvg();
     update(rootData);
 
-    // Прокрутка контейнера наверх, чтобы видеть корень
+    // Прокрутка наверх
     const container = document.getElementById("treeContainer");
     container.scrollTop = 0;
     container.scrollLeft = 0;
@@ -82,11 +82,10 @@ function createSvg() {
     svg = container.append("svg")
         .attr("width", container.node().clientWidth)
         .attr("height", container.node().clientHeight)
-        .attr("viewBox", `0 0 ${container.node().clientWidth} ${container.node().clientHeight}`) // фикс для scroll
+        .attr("viewBox", `0 0 ${container.node().clientWidth} ${container.node().clientHeight}`)
         .attr("preserveAspectRatio", "xMinYMin meet");
 
-    g = svg.append("g"); // без translate, чтобы корень был сверху
-
+    g = svg.append("g"); // без translate
     treeLayout = d3.tree().nodeSize([120, 180]);
 }
 
@@ -95,6 +94,10 @@ function update(source) {
     const treeData = treeLayout(rootData);
     const nodes = treeData.descendants();
     const links = treeData.links();
+
+    // Найдем минимальную координату X (чтобы поднять дерево к верху)
+    const minX = d3.min(nodes, d => d.x);
+    nodes.forEach(d => { d.x = d.x - minX; }); // поднимаем верхний узел
 
     nodes.forEach(d => { d.y = d.depth * 180; });
 
@@ -145,6 +148,7 @@ function update(source) {
 
     nodes.forEach(d => { d.x0 = d.x; d.y0 = d.y; });
 
+    // Адаптация SVG под дерево
     const maxX = d3.max(nodes,d=>d.x) + 100;
     const maxY = d3.max(nodes,d=>d.y) + 200;
     svg.attr("width", Math.max(maxY, document.getElementById("treeContainer").clientWidth));
@@ -169,10 +173,11 @@ function toggleChildren(d) {
 
 // Сброс дерева
 document.getElementById("resetBtn").onclick = () => {
-    if(rootData.children) rootData.children.forEach(collapse); // свернуть всех кроме корня
+    if(rootData.children) rootData.children.forEach(collapse);
     update(rootData);
-    document.getElementById("treeContainer").scrollTop = 0; // наверх
-    document.getElementById("treeContainer").scrollLeft = 0;
+    const container = document.getElementById("treeContainer");
+    container.scrollTop = 0;
+    container.scrollLeft = 0;
 };
 
 loadData();
