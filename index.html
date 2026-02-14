@@ -1,161 +1,113 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Шежіре</title>
-
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f4f6f8;
-      margin: 0;
-      padding: 0;
-    }
-
-    header {
-      background: #1f2937;
-      color: white;
-      padding: 15px;
-      font-size: 20px;
-      text-align: center;
-      font-weight: bold;
-    }
-
-    #treeContainer {
-      padding: 20px;
-      overflow-x: auto;
-      white-space: nowrap;
-    }
-
-    .level {
-      display: inline-block;
-      vertical-align: top;
-      margin-right: 40px;
-    }
-
-    .person {
-      padding: 10px 15px;
-      border-radius: 10px;
-      margin-bottom: 10px;
-      cursor: pointer;
-      font-weight: bold;
-      text-align: center;
-      min-width: 140px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.15);
-      transition: 0.2s;
-    }
-
-    .person:hover {
-      transform: scale(1.05);
-    }
-
-    .green {
-      background: #2ecc71;
-      color: white;
-    }
-
-    .blue {
-      background: #3498db;
-      color: white;
-      cursor: default;
-    }
-
-    .selected {
-      border: 3px solid #ffcc00;
-    }
-
-    #info {
-      padding: 10px 20px;
-      font-size: 16px;
-      background: white;
-      border-top: 1px solid #ddd;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Шежіре Онлайн</title>
+<style>
+body { font-family: Arial, sans-serif; background: #f4f6f8; margin:0; padding:0; }
+header { background: #1f2937; color: white; padding: 15px; font-size: 20px; text-align: center; font-weight: bold; }
+#treeContainer { padding: 20px; overflow-x: auto; white-space: nowrap; }
+.level { display: inline-block; vertical-align: top; margin-right: 40px; position: relative; }
+.person { padding: 10px 15px; border-radius: 10px; margin-bottom: 10px; cursor: pointer; font-weight: bold; text-align: center; min-width: 140px; box-shadow: 0 2px 5px rgba(0,0,0,0.15); transition: 0.2s; position: relative; }
+.person:hover { transform: scale(1.05); }
+.green { background: #2ecc71; color: white; }
+.blue { background: #3498db; color: white; cursor: default; }
+.selected { border: 3px solid #ffcc00; }
+.connector { width:2px; background:#555; position:absolute; }
+button { margin: 10px 20px; padding:10px 15px; font-weight:bold; border:none; border-radius:5px; background:#1f2937; color:white; cursor:pointer; }
+button:hover { background:#111827; }
+</style>
 </head>
-
 <body>
 
 <header>Шежіре Онлайн</header>
-
+<div>
+<button id="resetBtn">Сбросить дерево</button>
+</div>
 <div id="treeContainer"></div>
 <div id="info">Нажми на зелёного человека чтобы открыть его потомков ➜</div>
 
 <script>
-  const API_URL = "https://script.google.com/macros/s/AKfycbzPSTf_4Tdq4xq8C1pwBYrx33F28MOEYKhwgVFcJ4TP5LYFKhhCaQ8IR44EFkadCW6U/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbzPSTf_4Tdq4xq8C1pwBYrx33F28MOEYKhwgVFcJ4TP5LYFKhhCaQ8IR44EFkadCW6U/exec";
 
-  let people = [];
+let people = [];
+let expanded = {}; // хранит состояние развёрнутых веток
+let rootId = null;
 
-  async function loadData() {
+async function loadData() {
     const res = await fetch(API_URL);
     people = await res.json();
-
-    // Если father_id пустой → это корень
     const root = people.find(p => p.father_id === "" || p.father_id === null);
-
     if (!root) {
-      document.getElementById("info").innerText = "Ошибка: не найден главный предок (father_id пустой)";
-      return;
+        document.getElementById("info").innerText = "Ошибка: корень не найден";
+        return;
     }
+    rootId = root.id;
+    showTree(rootId);
+}
 
-    showTree(root.id);
-  }
-
-  function getChildren(fatherId) {
+function getChildren(fatherId) {
     return people.filter(p => String(p.father_id) === String(fatherId));
-  }
+}
 
-  function showTree(startId) {
+function showTree(startId) {
     const container = document.getElementById("treeContainer");
     container.innerHTML = "";
 
-    let currentLevel = [people.find(p => String(p.id) === String(startId))];
-    let levelIndex = 0;
+    // рекурсивная функция для построения веток
+    function buildLevel(personId, levelDiv) {
+        const person = people.find(p => String(p.id) === String(personId));
+        if (!person) return;
 
-    while (currentLevel.length > 0) {
-      const levelDiv = document.createElement("div");
-      levelDiv.className = "level";
-
-      currentLevel.forEach(person => {
         const div = document.createElement("div");
         div.className = "person " + (person.color || "blue");
-
         div.innerText = person.name;
+        div.dataset.id = person.id;
 
-        if (String(person.id) === String(startId)) {
-          div.classList.add("selected");
-        }
+        if (expanded[person.id]) div.classList.add("selected");
 
+        // обработка клика
         if (person.color === "green") {
-          div.onclick = () => showTree(person.id);
+            div.onclick = () => {
+                // переключаем состояние
+                expanded[person.id] = !expanded[person.id];
+                showTree(rootId);
+            }
         }
 
         levelDiv.appendChild(div);
-      });
 
-      container.appendChild(levelDiv);
+        // дети
+        if (expanded[person.id]) {
+            const children = getChildren(person.id);
+            if (children.length > 0) {
+                const childLevel = document.createElement("div");
+                childLevel.className = "level";
 
-      // Берём всех детей текущего уровня
-      let nextLevel = [];
-      currentLevel.forEach(p => {
-        nextLevel = nextLevel.concat(getChildren(p.id));
-      });
-
-      currentLevel = nextLevel;
-      levelIndex++;
-
-      if (levelIndex > 20) break; // защита от бесконечности
+                children.forEach(c => buildLevel(c.id, childLevel));
+                levelDiv.appendChild(childLevel);
+            }
+        }
     }
 
-    const selectedPerson = people.find(p => String(p.id) === String(startId));
-    document.getElementById("info").innerText =
-      "Показана ветка потомков: " + selectedPerson.name;
-  }
+    const mainLevel = document.createElement("div");
+    mainLevel.className = "level";
+    buildLevel(startId, mainLevel);
+    container.appendChild(mainLevel);
 
-  loadData();
+    const selectedPerson = people.find(p => String(p.id) === String(startId));
+    document.getElementById("info").innerText = "Показана ветка: " + selectedPerson.name;
+}
+
+// кнопка сброса
+document.getElementById("resetBtn").onclick = () => {
+    expanded = {};
+    showTree(rootId);
+}
+
+loadData();
 </script>
 
 </body>
 </html>
-
-
