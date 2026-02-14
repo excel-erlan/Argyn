@@ -9,9 +9,10 @@
   body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f4f6f8; }
   header { background: #1f2937; color: white; padding: 15px; font-size: 20px; text-align: center; font-weight: bold; }
   #treeContainer { width: 100%; height: 90vh; overflow: auto; border-top: 1px solid #ddd; }
-  .node rect { cursor: pointer; fill: #3498db; stroke: #2c3e50; stroke-width: 1.5px; }
+  .node rect { cursor: pointer; stroke: #2c3e50; stroke-width: 1.5px; }
   .node text { font: 14px sans-serif; fill: white; text-anchor: middle; dominant-baseline: middle; pointer-events: none; }
-  .green { fill: #2ecc71; }
+  .green { fill: #2ecc71; } /* для дедов */
+  .blue { fill: #3498db; }  /* для остальных */
   .link { fill: none; stroke: #555; stroke-width: 2px; }
   #resetBtn { margin: 10px; padding: 8px 12px; background:#1f2937; color:white; border:none; border-radius:5px; cursor:pointer; }
   #resetBtn:hover { background:#2c3e50; }
@@ -29,9 +30,17 @@ let allData = [];
 let rootData;
 let svg, g, treeLayout, duration = 500;
 
+// Массив ID дедов (укажи свои реальные ID)
+const grandfathers = ["id1","id2","id3"]; // <-- сюда твои ID дедов
+
 async function loadData() {
     const res = await fetch(API_URL);
     allData = await res.json();
+
+    // Проставляем цвет для дедов
+    allData.forEach(d => {
+        d.color = grandfathers.includes(d.id) ? "green" : "blue";
+    });
 
     const root = buildHierarchy(allData);
     rootData = d3.hierarchy(root);
@@ -44,13 +53,11 @@ async function loadData() {
     createSvg();
     update(rootData);
 
-    // Прокрутка наверх
     const container = document.getElementById("treeContainer");
     container.scrollTop = 0;
     container.scrollLeft = 0;
 }
 
-// Построение иерархии из плоских данных
 function buildHierarchy(data) {
     let idMap = {};
     data.forEach(d => { idMap[d.id] = {...d, children: []}; });
@@ -65,7 +72,6 @@ function buildHierarchy(data) {
     return root;
 }
 
-// Функция для сворачивания узлов
 function collapse(d) {
     if(d.children){
         d._children = d.children;
@@ -74,7 +80,6 @@ function collapse(d) {
     }
 }
 
-// Создание SVG
 function createSvg() {
     const container = d3.select("#treeContainer");
     container.selectAll("*").remove();
@@ -85,40 +90,30 @@ function createSvg() {
         .attr("viewBox", `0 0 ${container.node().clientWidth} ${container.node().clientHeight}`)
         .attr("preserveAspectRatio", "xMinYMin meet");
 
-    g = svg.append("g"); // без translate
+    g = svg.append("g");
     treeLayout = d3.tree().nodeSize([120, 180]);
 }
 
-// Обновление дерева
 function update(source) {
     const treeData = treeLayout(rootData);
     const nodes = treeData.descendants();
     const links = treeData.links();
 
-    // Найдем минимальную координату X (чтобы поднять дерево к верху)
     const minX = d3.min(nodes, d => d.x);
-    nodes.forEach(d => { d.x = d.x - minX; }); // поднимаем верхний узел
-
+    nodes.forEach(d => { d.x = d.x - minX; });
     nodes.forEach(d => { d.y = d.depth * 180; });
 
-    // Links
     const link = g.selectAll(".link").data(links, d => d.target.data.id);
-
     link.enter()
         .append("path")
         .attr("class", "link")
         .attr("d", d => diagonal(source, source))
         .transition().duration(duration)
         .attr("d", d => diagonal(d.source, d.target));
-
-    link.transition().duration(duration)
-        .attr("d", d => diagonal(d.source, d.target));
-
+    link.transition().duration(duration).attr("d", d => diagonal(d.source, d.target));
     link.exit().remove();
 
-    // Nodes
     const node = g.selectAll(".node").data(nodes, d => d.data.id);
-
     const nodeEnter = node.enter().append("g")
         .attr("class", "node")
         .attr("transform", d => `translate(${source.y0},${source.x0})`)
@@ -129,7 +124,7 @@ function update(source) {
         .attr("height", 40)
         .attr("rx", 10)
         .attr("ry", 10)
-        .attr("class", d => d.data.color === "green" ? "green" : "blue");
+        .attr("class", d => d.data.color); // green или blue
 
     nodeEnter.append("text")
         .attr("dx", 60)
@@ -137,30 +132,23 @@ function update(source) {
         .text(d => d.data.name);
 
     const nodeUpdate = nodeEnter.merge(node);
-
     nodeUpdate.transition().duration(duration)
         .attr("transform", d => `translate(${d.y},${d.x})`);
-
-    nodeUpdate.select("rect")
-        .attr("class", d => d.data.color === "green" ? "green" : "blue");
+    nodeUpdate.select("rect").attr("class", d => d.data.color);
 
     node.exit().remove();
-
     nodes.forEach(d => { d.x0 = d.x; d.y0 = d.y; });
 
-    // Адаптация SVG под дерево
     const maxX = d3.max(nodes,d=>d.x) + 100;
     const maxY = d3.max(nodes,d=>d.y) + 200;
     svg.attr("width", Math.max(maxY, document.getElementById("treeContainer").clientWidth));
     svg.attr("height", Math.max(maxX, document.getElementById("treeContainer").clientHeight));
 }
 
-// Линия от родителя к детям
 function diagonal(s, d) {
     return `M ${s.y + 120},${s.x + 20} C ${(s.y + d.y)/2 + 120},${s.x + 20} ${(s.y + d.y)/2 + 120},${d.x + 20} ${d.y},${d.x + 20}`;
 }
 
-// Раскрытие/сокрытие детей
 function toggleChildren(d) {
     if(d.children){
         d._children = d.children;
@@ -171,7 +159,6 @@ function toggleChildren(d) {
     }
 }
 
-// Сброс дерева
 document.getElementById("resetBtn").onclick = () => {
     if(rootData.children) rootData.children.forEach(collapse);
     update(rootData);
