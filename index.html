@@ -4,17 +4,18 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Шежіре Онлайн</title>
+
+<!-- Treant.js CSS -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/treant-js/1.0/Treant.css" integrity="sha512-nhMZVBu4ZPxY1w82UckJvOCtM4wtX8kdkZJ/2nP0VtxQ1Uyb6zAwW3uF6qL6kR/BmIuKAn3F5C6Eo0DhAq4ZLw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
 <style>
 body { font-family: Arial, sans-serif; background: #f4f6f8; margin:0; padding:0; }
 header { background: #1f2937; color: white; padding: 15px; font-size: 22px; text-align: center; font-weight: bold; }
-#treeContainer { padding: 20px; overflow:auto; position:relative; min-height:500px; }
-.person { padding: 10px 20px; border-radius: 12px; font-weight: bold; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.2); cursor: pointer; transition:0.2s; position: relative; display: inline-block; margin:20px; }
-.person:hover { transform: scale(1.05); }
-.green { background:#2ecc71; color:white; }
-.blue { background:#3498db; color:white; cursor: default; }
 button { margin:10px 20px; padding:10px 15px; font-weight:bold; border:none; border-radius:5px; background:#1f2937; color:white; cursor:pointer; }
 button:hover { background:#111827; }
-svg { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; }
+.node { border-radius:12px; padding:10px 20px; font-weight:bold; text-align:center; box-shadow:0 2px 8px rgba(0,0,0,0.2); cursor:pointer; }
+.green { background:#2ecc71; color:white; }
+.blue { background:#3498db; color:white; cursor: default; }
 </style>
 </head>
 <body>
@@ -22,95 +23,74 @@ svg { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:
 <header>Шежіре Онлайн</header>
 <button id="resetBtn">Сбросить дерево</button>
 <div id="treeContainer"></div>
-<svg id="lines"></svg>
+
+<!-- Treant.js JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/raphael/2.3.0/raphael.min.js" integrity="sha512-V4PXTHUoE0kMCzH5n/5c8wZEXgC+6JltG2W3F07VltWsmFob5r13XYE+1vE2W2km3sF6lQUNW2f0Qf4V+z4OYQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/treant-js/1.0/Treant.min.js" integrity="sha512-/7lwS2U/uw1u/5Xz5wtDgCQ7vXyxQO/auWWU8O8IYjXh0FiDsR+5qjeQj0K5y8wK+dSmPJJ6V+ZcmrR7XmOk2w==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
 <script>
 const API_URL = "https://script.google.com/macros/s/AKfycbzPSTf_4Tdq4xq8C1pwBYrx33F28MOEYKhwgVFcJ4TP5LYFKhhCaQ8IR44EFkadCW6U/exec";
-let people = [];
-let expanded = {};
-let rootId = null;
+let originalNodes = [];
+let chartConfig = null;
 
 async function loadData(){
     const res = await fetch(API_URL);
-    people = await res.json();
+    const people = await res.json();
+
+    // Создаём карту по id для быстрого доступа
+    const map = {};
+    people.forEach(p=>map[p.id] = {...p, children:[]});
+
+    // Собираем дерево
+    let root = null;
     people.forEach(p=>{
-        p.hasChildren = people.some(c=>String(c.father_id)===String(p.id));
+        if(p.father_id === "" || p.father_id === null){
+            root = map[p.id];
+        } else if(map[p.father_id]){
+            map[p.father_id].children.push(map[p.id]);
+        }
     });
-    const root = people.find(p=>p.father_id===""||p.father_id===null);
+
     if(!root){ document.getElementById("treeContainer").innerText="Ошибка: корень не найден"; return; }
-    rootId = root.id;
-    renderTree();
+
+    originalNodes = buildTreantNodes(root);
+    renderTree(originalNodes);
 }
 
-function getChildren(fatherId){
-    return people.filter(p=>String(p.father_id)===String(fatherId));
-}
-
-function renderTree(){
-    const container = document.getElementById("treeContainer");
-    container.innerHTML="";
-    const svg = document.getElementById("lines");
-    svg.innerHTML="";
-
-    function createNode(person){
-        const div = document.createElement("div");
-        div.className = "person " + (person.hasChildren && person.color==="green" ? "green":"blue");
-        div.innerText = person.name;
-        div.dataset.id = person.id;
-
-        if(person.hasChildren && person.color==="green"){
-            div.onclick = ()=>{
-                expanded[person.id] = !expanded[person.id];
-                renderTree();
-            }
-        }
-
-        const children = getChildren(person.id);
-        if(children.length>0 && (person.color==="green"?expanded[person.id]:true)){
-            const levelDiv = document.createElement("div");
-            levelDiv.style.display="flex";
-            levelDiv.style.flexDirection="column";
-            levelDiv.style.alignItems="flex-start";
-            children.forEach(child=>{
-                const childNode = createNode(child);
-                levelDiv.appendChild(childNode);
-
-                // рисуем линии после отрисовки
-                setTimeout(()=>{
-                    const pRect = div.getBoundingClientRect();
-                    const cRect = childNode.getBoundingClientRect();
-                    const containerRect = container.getBoundingClientRect();
-                    const x1 = pRect.right - containerRect.left;
-                    const y1 = pRect.top + pRect.height/2 - containerRect.top;
-                    const x2 = cRect.left - containerRect.left;
-                    const y2 = cRect.top + cRect.height/2 - containerRect.top;
-
-                    const line = document.createElementNS("http://www.w3.org/2000/svg","line");
-                    line.setAttribute("x1",x1);
-                    line.setAttribute("y1",y1);
-                    line.setAttribute("x2",x2);
-                    line.setAttribute("y2",y2);
-                    line.setAttribute("stroke","#555");
-                    line.setAttribute("stroke-width","2");
-                    svg.appendChild(line);
-                },0);
-            });
-            div.appendChild(levelDiv);
-        }
-        return div;
+// Рекурсивно создаём объекты для Treant.js
+function buildTreantNodes(person){
+    const node = {
+        text: { name: person.name },
+        HTMLclass: person.color
+    };
+    if(person.children && person.children.length>0){
+        node.children = person.children.map(c=>buildTreantNodes(c));
     }
-
-    const rootPerson = people.find(p=>String(p.id)===String(rootId));
-    container.appendChild(createNode(rootPerson));
+    return node;
 }
 
+function renderTree(nodes){
+    if(chartConfig) chartConfig = null; // удаляем старый граф
+    document.getElementById("treeContainer").innerHTML = "";
+    chartConfig = new Treant({
+        chart: {
+            container: "#treeContainer",
+            rootOrientation: "WEST",
+            nodeAlign: "BOTTOM",
+            connectors: { type: "step" },
+            scrollbar: "fancy"
+        },
+        nodeStructure: nodes
+    });
+}
+
+// Сброс дерева
 document.getElementById("resetBtn").onclick = ()=>{
-    expanded = {};
-    renderTree();
+    renderTree(originalNodes);
 }
 
 loadData();
 </script>
+
 </body>
 </html>
-
