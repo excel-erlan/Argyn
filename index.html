@@ -30,7 +30,7 @@ const API_URL = "https://script.google.com/macros/s/AKfycbzPSTf_4Tdq4xq8C1pwBYrx
 let originalTree = null;
 
 // Загрузка данных
-async function loadTree(){
+async function loadTree() {
     const res = await fetch(API_URL);
     const people = await res.json();
 
@@ -48,22 +48,45 @@ async function loadTree(){
     renderTree(originalTree);
 }
 
-// Строим структуру для Treant.js
+// Рекурсивная функция для Treant.js
 function buildTreantNode(person){
     const node = {
         text: { name: person.name },
-        HTMLclass: person.color
+        HTMLclass: person.color,
+        children: []
     };
-    if(person.children && person.children.length>0){
+    if(person.children && person.children.length > 0){
         node.children = person.children.map(c => buildTreantNode(c));
+        node._children = [...node.children]; // для сворачивания
+        node.children = []; // изначально свернуто
+        node.clickable = true;
     }
     return node;
 }
 
-// Рендер дерева
+// Рендер Treant.js с кликабельными родителями
 let chart = null;
 function renderTree(nodeStructure){
     if(chart){ document.getElementById("treeContainer").innerHTML=""; chart=null; }
+
+    function attachClicks(node){
+        if(node.clickable){
+            const el = node.node;
+            if(el){
+                el.style.cursor = "pointer";
+                el.onclick = () => {
+                    if(node.children.length === 0){
+                        node.children = node._children;
+                    } else {
+                        node.children = [];
+                    }
+                    renderTree(originalTree);
+                }
+            }
+            if(node.children) node.children.forEach(attachClicks);
+        }
+    }
+
     chart = new Treant({
         chart:{
             container:"#treeContainer",
@@ -72,19 +95,10 @@ function renderTree(nodeStructure){
             connectors:{ type:"step" },
             scrollbar:"fancy"
         },
-        nodeStructure: nodeStructure,
-        callback: attachClickHandlers
+        nodeStructure: nodeStructure
     });
-}
 
-// Навешиваем клики на зеленые блоки
-function attachClickHandlers(node){
-    const el = node.node;
-    if(!el) return;
-    if(el.classList.contains("green")){
-        el.style.cursor="pointer";
-        el.onclick = () => alert("Клик по " + el.innerText + " — сюда можно добавить раскрытие ветки!");
-    }
+    attachClicks(nodeStructure);
 }
 
 // Сброс дерева
