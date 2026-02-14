@@ -43,6 +43,11 @@ async function loadData() {
 
     createSvg();
     update(rootData);
+
+    // Прокрутка контейнера наверх, чтобы видеть корень
+    const container = document.getElementById("treeContainer");
+    container.scrollTop = 0;
+    container.scrollLeft = 0;
 }
 
 // Построение иерархии из плоских данных
@@ -76,10 +81,11 @@ function createSvg() {
 
     svg = container.append("svg")
         .attr("width", container.node().clientWidth)
-        .attr("height", container.node().clientHeight);
+        .attr("height", container.node().clientHeight)
+        .attr("viewBox", `0 0 ${container.node().clientWidth} ${container.node().clientHeight}`) // фикс для scroll
+        .attr("preserveAspectRatio", "xMinYMin meet");
 
-    g = svg.append("g")
-        .attr("transform", "translate(50,20)"); // небольшой сдвиг сверху и слева
+    g = svg.append("g"); // без translate, чтобы корень был сверху
 
     treeLayout = d3.tree().nodeSize([120, 180]);
 }
@@ -165,6 +171,8 @@ function toggleChildren(d) {
 document.getElementById("resetBtn").onclick = () => {
     if(rootData.children) rootData.children.forEach(collapse); // свернуть всех кроме корня
     update(rootData);
+    document.getElementById("treeContainer").scrollTop = 0; // наверх
+    document.getElementById("treeContainer").scrollLeft = 0;
 };
 
 loadData();
