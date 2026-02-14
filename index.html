@@ -6,13 +6,14 @@
 <title>Шежіре Онлайн</title>
 
 <!-- Treant.js CSS -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/treant-js/1.0/Treant.css" integrity="sha512-nhMZVBu4ZPxY1w82UckJvOCtM4wtX8kdkZJ/2nP0VtxQ1Uyb6zAwW3uF6qL6kR/BmIuKAn3F5C6Eo0DhAq4ZLw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/treant-js/1.0/Treant.css" />
 
 <style>
 body { font-family: Arial, sans-serif; background: #f4f6f8; margin:0; padding:0; }
 header { background: #1f2937; color: white; padding: 15px; font-size: 22px; text-align: center; font-weight: bold; }
 button { margin:10px 20px; padding:10px 15px; font-weight:bold; border:none; border-radius:5px; background:#1f2937; color:white; cursor:pointer; }
 button:hover { background:#111827; }
+#treeContainer { width: 100%; height: 80vh; overflow: auto; margin-top: 10px; }
 .node { border-radius:12px; padding:10px 20px; font-weight:bold; text-align:center; box-shadow:0 2px 8px rgba(0,0,0,0.2); cursor:pointer; }
 .green { background:#2ecc71; color:white; }
 .blue { background:#3498db; color:white; cursor: default; }
@@ -25,25 +26,23 @@ button:hover { background:#111827; }
 <div id="treeContainer"></div>
 
 <!-- Treant.js JS -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/raphael/2.3.0/raphael.min.js" integrity="sha512-V4PXTHUoE0kMCzH5n/5c8wZEXgC+6JltG2W3F07VltWsmFob5r13XYE+1vE2W2km3sF6lQUNW2f0Qf4V+z4OYQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/treant-js/1.0/Treant.min.js" integrity="sha512-/7lwS2U/uw1u/5Xz5wtDgCQ7vXyxQO/auWWU8O8IYjXh0FiDsR+5qjeQj0K5y8wK+dSmPJJ6V+ZcmrR7XmOk2w==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/raphael/2.3.0/raphael.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/treant-js/1.0/Treant.min.js"></script>
 
 <script>
 const API_URL = "https://script.google.com/macros/s/AKfycbzPSTf_4Tdq4xq8C1pwBYrx33F28MOEYKhwgVFcJ4TP5LYFKhhCaQ8IR44EFkadCW6U/exec";
-let originalNodes = [];
-let chartConfig = null;
+let originalTree = null;
 
-async function loadData(){
+// Загрузка данных и построение дерева
+async function loadTree() {
     const res = await fetch(API_URL);
     const people = await res.json();
 
-    // Создаём карту по id для быстрого доступа
     const map = {};
-    people.forEach(p=>map[p.id] = {...p, children:[]});
+    people.forEach(p => map[p.id] = {...p, children: []});
 
-    // Собираем дерево
     let root = null;
-    people.forEach(p=>{
+    people.forEach(p => {
         if(p.father_id === "" || p.father_id === null){
             root = map[p.id];
         } else if(map[p.father_id]){
@@ -51,28 +50,29 @@ async function loadData(){
         }
     });
 
-    if(!root){ document.getElementById("treeContainer").innerText="Ошибка: корень не найден"; return; }
+    if(!root){
+        document.getElementById("treeContainer").innerText = "Ошибка: не найден главный предок";
+        return;
+    }
 
-    originalNodes = buildTreantNodes(root);
-    renderTree(originalNodes);
+    originalTree = buildTreantNode(root);
+    renderTree(originalTree);
 }
 
-// Рекурсивно создаём объекты для Treant.js
-function buildTreantNodes(person){
-    const node = {
-        text: { name: person.name },
-        HTMLclass: person.color
-    };
-    if(person.children && person.children.length>0){
-        node.children = person.children.map(c=>buildTreantNodes(c));
+// Рекурсивная функция для Treant.js
+function buildTreantNode(person){
+    const node = { text: { name: person.name }, HTMLclass: person.color };
+    if(person.children && person.children.length > 0){
+        node.children = person.children.map(c => buildTreantNode(c));
     }
     return node;
 }
 
-function renderTree(nodes){
-    if(chartConfig) chartConfig = null; // удаляем старый граф
-    document.getElementById("treeContainer").innerHTML = "";
-    chartConfig = new Treant({
+// Отрисовка Treant.js
+let chart = null;
+function renderTree(nodeStructure){
+    if(chart){ document.getElementById("treeContainer").innerHTML = ""; chart = null; }
+    chart = new Treant({
         chart: {
             container: "#treeContainer",
             rootOrientation: "WEST",
@@ -80,18 +80,18 @@ function renderTree(nodes){
             connectors: { type: "step" },
             scrollbar: "fancy"
         },
-        nodeStructure: nodes
+        nodeStructure: nodeStructure
     });
 }
 
 // Сброс дерева
-document.getElementById("resetBtn").onclick = ()=>{
-    renderTree(originalNodes);
+document.getElementById("resetBtn").onclick = () => {
+    renderTree(originalTree);
 }
 
-loadData();
+// Загрузка дерева
+loadTree();
 </script>
 
 </body>
 </html>
-
