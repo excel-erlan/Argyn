@@ -33,14 +33,13 @@ async function loadData() {
     const res = await fetch(API_URL);
     allData = await res.json();
 
-    // Создаем дерево для D3
     const root = buildHierarchy(allData);
     rootData = d3.hierarchy(root);
     rootData.x0 = 0;
     rootData.y0 = 0;
 
-    // Раскрываем верхние узлы сразу
-    rootData.children.forEach(expandAllChildren);
+    // Свернуть всех детей, кроме корня
+    if (rootData.children) rootData.children.forEach(collapse);
 
     createSvg();
     update(rootData);
@@ -61,10 +60,12 @@ function buildHierarchy(data) {
     return root;
 }
 
-// Рекурсивное раскрытие всех детей
-function expandAllChildren(d) {
-    if(d.children && d.children.length > 0){
-        d.children.forEach(expandAllChildren);
+// Функция для сворачивания узлов
+function collapse(d) {
+    if(d.children){
+        d._children = d.children;
+        d._children.forEach(collapse);
+        d.children = null;
     }
 }
 
@@ -78,9 +79,9 @@ function createSvg() {
         .attr("height", container.node().clientHeight);
 
     g = svg.append("g")
-        .attr("transform", "translate(100,50)");
+        .attr("transform", "translate(50,20)"); // небольшой сдвиг сверху и слева
 
-    treeLayout = d3.tree().nodeSize([120, 180]); // размеры узлов
+    treeLayout = d3.tree().nodeSize([120, 180]);
 }
 
 // Обновление дерева
@@ -89,10 +90,9 @@ function update(source) {
     const nodes = treeData.descendants();
     const links = treeData.links();
 
-    // Нормализуем координаты
     nodes.forEach(d => { d.y = d.depth * 180; });
 
-    // ******************* Links ***************************
+    // Links
     const link = g.selectAll(".link").data(links, d => d.target.data.id);
 
     link.enter()
@@ -107,7 +107,7 @@ function update(source) {
 
     link.exit().remove();
 
-    // ******************* Nodes ***************************
+    // Nodes
     const node = g.selectAll(".node").data(nodes, d => d.data.id);
 
     const nodeEnter = node.enter().append("g")
@@ -137,10 +137,8 @@ function update(source) {
 
     node.exit().remove();
 
-    // Сохраняем старые позиции
     nodes.forEach(d => { d.x0 = d.x; d.y0 = d.y; });
 
-    // Адаптация SVG под дерево
     const maxX = d3.max(nodes,d=>d.x) + 100;
     const maxY = d3.max(nodes,d=>d.y) + 200;
     svg.attr("width", Math.max(maxY, document.getElementById("treeContainer").clientWidth));
@@ -165,7 +163,7 @@ function toggleChildren(d) {
 
 // Сброс дерева
 document.getElementById("resetBtn").onclick = () => {
-    rootData.children.forEach(expandAllChildren);
+    if(rootData.children) rootData.children.forEach(collapse); // свернуть всех кроме корня
     update(rootData);
 };
 
