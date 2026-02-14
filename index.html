@@ -29,7 +29,7 @@ const API_URL = "https://script.google.com/macros/s/AKfycbzPSTf_4Tdq4xq8C1pwBYrx
 let rootData = null;
 
 const container = d3.select("#treeContainer");
-const svg = container.append("svg").attr("height", 2000);
+const svg = container.append("svg").attr("width","100%");
 const g = svg.append("g").attr("transform","translate(50,50)");
 
 let treeLayout = d3.tree().nodeSize([100,180]); // узлы на 180px вправо
@@ -38,17 +38,25 @@ async function loadTree() {
     const res = await fetch(API_URL);
     const people = await res.json();
 
+    // Список твоих 7 дедов, чтобы окрашивать их в зеленый
+    const myGrandfathers = [1,5,9,12,13,16,19];
+
     const map = {};
     people.forEach(p => map[p.id] = {...p, children: []});
-    let rootPerson = null;
+
     people.forEach(p => {
-        if(p.father_id === "" || p.father_id === null) rootPerson = map[p.id];
-        else if(map[p.father_id]) map[p.father_id].children.push(map[p.id]);
+        if(p.father_id !== "" && map[p.father_id]) map[p.father_id].children.push(map[p.id]);
     });
 
+    let rootPerson = people.find(p => p.father_id === "" || p.father_id === null);
     if(!rootPerson){ container.html("Ошибка: не найден главный предок"); return; }
 
-    rootData = d3.hierarchy(rootPerson, d => d.children);
+    // принудительно окрашиваем деды в зеленый
+    people.forEach(p => {
+        if(myGrandfathers.includes(p.id)) p.color = "green";
+    });
+
+    rootData = d3.hierarchy(map[rootPerson.id], d => d.children);
     rootData.x0 = 0;
     rootData.y0 = 0;
 
@@ -71,9 +79,11 @@ function update(source){
     const nodes = treeData.descendants();
     const links = treeData.links();
 
-    // динамическая ширина SVG
+    // динамическая ширина и высота SVG
     const maxY = d3.max(nodes, d=>d.y) + 200;
+    const maxX = d3.max(nodes, d=>d.x) + 200;
     svg.attr("width", Math.max(container.node().clientWidth, maxY));
+    svg.attr("height", Math.max(container.node().clientHeight, maxX));
 
     // **************** Nodes ****************
     let node = g.selectAll("g.node").data(nodes, d => d.data.id);
@@ -130,6 +140,5 @@ document.getElementById("resetBtn").onclick = () => {
 
 loadTree();
 </script>
-
 </body>
 </html>
