@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Шежіре</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      margin: 0;
+      padding: 0;
+    }
+
+    header {
+      background: #1f2937;
+      color: white;
+      padding: 15px;
+      font-size: 20px;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    #treeContainer {
+      padding: 20px;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+
+    .level {
+      display: inline-block;
+      vertical-align: top;
+      margin-right: 40px;
+    }
+
+    .person {
+      padding: 10px 15px;
+      border-radius: 10px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      font-weight: bold;
+      text-align: center;
+      min-width: 140px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+      transition: 0.2s;
+    }
+
+    .person:hover {
+      transform: scale(1.05);
+    }
+
+    .green {
+      background: #2ecc71;
+      color: white;
+    }
+
+    .blue {
+      background: #3498db;
+      color: white;
+      cursor: default;
+    }
+
+    .selected {
+      border: 3px solid #ffcc00;
+    }
+
+    #info {
+      padding: 10px 20px;
+      font-size: 16px;
+      background: white;
+      border-top: 1px solid #ddd;
+    }
+  </style>
+</head>
+
+<body>
+
+<header>Шежіре Онлайн</header>
+
+<div id="treeContainer"></div>
+<div id="info">Нажми на зелёного человека чтобы открыть его потомков ➜</div>
+
+<script>
+  const API_URL = "ВСТАВЬ_СЮДА_ССЫЛКУ_АПИ";
+
+  let people = [];
+
+  async function loadData() {
+    const res = await fetch(API_URL);
+    people = await res.json();
+
+    // Если father_id пустой → это корень
+    const root = people.find(p => p.father_id === "" || p.father_id === null);
+
+    if (!root) {
+      document.getElementById("info").innerText = "Ошибка: не найден главный предок (father_id пустой)";
+      return;
+    }
+
+    showTree(root.id);
+  }
+
+  function getChildren(fatherId) {
+    return people.filter(p => String(p.father_id) === String(fatherId));
+  }
+
+  function showTree(startId) {
+    const container = document.getElementById("treeContainer");
+    container.innerHTML = "";
+
+    let currentLevel = [people.find(p => String(p.id) === String(startId))];
+    let levelIndex = 0;
+
+    while (currentLevel.length > 0) {
+      const levelDiv = document.createElement("div");
+      levelDiv.className = "level";
+
+      currentLevel.forEach(person => {
+        const div = document.createElement("div");
+        div.className = "person " + (person.color || "blue");
+
+        div.innerText = person.name;
+
+        if (String(person.id) === String(startId)) {
+          div.classList.add("selected");
+        }
+
+        if (person.color === "green") {
+          div.onclick = () => showTree(person.id);
+        }
+
+        levelDiv.appendChild(div);
+      });
+
+      container.appendChild(levelDiv);
+
+      // Берём всех детей текущего уровня
+      let nextLevel = [];
+      currentLevel.forEach(p => {
+        nextLevel = nextLevel.concat(getChildren(p.id));
+      });
+
+      currentLevel = nextLevel;
+      levelIndex++;
+
+      if (levelIndex > 20) break; // защита от бесконечности
+    }
+
+    const selectedPerson = people.find(p => String(p.id) === String(startId));
+    document.getElementById("info").innerText =
+      "Показана ветка потомков: " + selectedPerson.name;
+  }
+
+  loadData();
+</script>
+
+</body>
+</html>
