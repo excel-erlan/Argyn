@@ -7,8 +7,21 @@
 <script src="https://d3js.org/d3.v7.min.js"></script>
 
 <style>
-  body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f4f6f8; }
-  header { background: #1f2937; color: white; padding: 15px; font-size: 20px; text-align: center; font-weight: bold; }
+  body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background: #f4f6f8;
+  }
+
+  header {
+    background: #1f2937;
+    color: white;
+    padding: 15px;
+    font-size: 20px;
+    text-align: center;
+    font-weight: bold;
+  }
 
   #treeContainer {
     width: 100%;
@@ -16,6 +29,14 @@
     overflow: auto;
     border-top: 1px solid #ddd;
     background: white;
+    position: relative;
+  }
+
+  /* ОБЕРТКА ДЛЯ СКРОЛЛА */
+  #innerWrapper {
+    width: 6000px;   /* ширина для горизонтального скролла */
+    height: 4000px;  /* высота для вертикального скролла */
+    position: relative;
   }
 
   .node rect {
@@ -25,7 +46,7 @@
   }
 
   .green { fill: #2ecc71; }
-  .blue { fill: #3498db; }
+  .blue  { fill: #3498db; }
 
   .node text {
     font: 14px sans-serif;
@@ -44,21 +65,26 @@
   #resetBtn {
     margin: 10px;
     padding: 8px 12px;
-    background:#1f2937;
-    color:white;
-    border:none;
-    border-radius:5px;
-    cursor:pointer;
+    background: #1f2937;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
   }
 
-  #resetBtn:hover { background:#2c3e50; }
+  #resetBtn:hover {
+    background: #2c3e50;
+  }
 </style>
 </head>
 
 <body>
 <header>Шежіре Онлайн</header>
 <button id="resetBtn">Сбросить дерево</button>
-<div id="treeContainer"></div>
+
+<div id="treeContainer">
+  <div id="innerWrapper"></div>
+</div>
 
 <script>
 const API_URL = "https://script.google.com/macros/s/AKfycbzPSTf_4Tdq4xq8C1pwBYrx33F28MOEYKhwgVFcJ4TP5LYFKhhCaQ8IR44EFkadCW6U/exec";
@@ -68,19 +94,18 @@ let rootData;
 let svg, g, treeLayout;
 let duration = 500;
 
-// ID дедов (сюда вставь реальные id)
-const grandfathers = ["id1","id2","id3"];
-
-// минимальный размер SVG чтобы всегда был горизонтальный скролл
-const MIN_SVG_WIDTH = 4000;
-const MIN_SVG_HEIGHT = 2000;
-
 async function loadData() {
     const res = await fetch(API_URL);
     allData = await res.json();
 
+    // ======= ВОТ ТУТ ДЕДЫ ЗЕЛЕНЫЕ =======
+    // В таблице должно быть поле is_grandfather = "1" или "true"
     allData.forEach(d => {
-        d.color = grandfathers.includes(d.id) ? "green" : "blue";
+        if (d.is_grandfather == "1" || d.is_grandfather == "true" || d.is_grandfather === true) {
+            d.color = "green";
+        } else {
+            d.color = "blue";
+        }
     });
 
     const root = buildHierarchy(allData);
@@ -89,11 +114,13 @@ async function loadData() {
     rootData.x0 = 0;
     rootData.y0 = 0;
 
+    // Дерево должно быть СВЕРНУТО
     if (rootData.children) rootData.children.forEach(collapse);
 
     createSvg();
     update(rootData);
 
+    // в самый верх влево
     const container = document.getElementById("treeContainer");
     container.scrollTop = 0;
     container.scrollLeft = 0;
@@ -115,6 +142,7 @@ function buildHierarchy(data) {
     return root;
 }
 
+// Свернуть полностью всех детей
 function collapse(d) {
     if(d.children){
         d._children = d.children;
@@ -124,15 +152,15 @@ function collapse(d) {
 }
 
 function createSvg() {
-    const container = d3.select("#treeContainer");
-    container.selectAll("*").remove();
+    const wrapper = d3.select("#innerWrapper");
+    wrapper.selectAll("*").remove();
 
-    svg = container.append("svg")
-        .attr("width", MIN_SVG_WIDTH)
-        .attr("height", MIN_SVG_HEIGHT);
+    svg = wrapper.append("svg")
+        .attr("width", 6000)
+        .attr("height", 4000);
 
     g = svg.append("g")
-        .attr("transform", "translate(50,50)");
+        .attr("transform", "translate(100,100)");
 
     treeLayout = d3.tree().nodeSize([120, 180]);
 }
@@ -143,10 +171,6 @@ function update(source) {
     const links = treeData.links();
 
     nodes.forEach(d => { d.y = d.depth * 180; });
-
-    // поднять дерево вверх
-    const minX = d3.min(nodes, d => d.x);
-    nodes.forEach(d => { d.x = d.x - minX; });
 
     // LINKS
     const link = g.selectAll(".link")
@@ -197,14 +221,6 @@ function update(source) {
     node.exit().remove();
 
     nodes.forEach(d => { d.x0 = d.x; d.y0 = d.y; });
-
-    // РЕАЛЬНЫЕ размеры дерева
-    const maxX = d3.max(nodes, d => d.x) + 300;
-    const maxY = d3.max(nodes, d => d.y) + 400;
-
-    // делаем SVG минимум огромным чтобы всегда был скролл вправо
-    svg.attr("width", Math.max(maxY, MIN_SVG_WIDTH));
-    svg.attr("height", Math.max(maxX, MIN_SVG_HEIGHT));
 }
 
 function diagonal(s, d) {
