@@ -68,14 +68,17 @@ let rootData;
 let svg, g, treeLayout;
 let duration = 500;
 
-// ID дедов (сюда свои реальные id)
+// ID дедов (сюда вставь реальные id)
 const grandfathers = ["id1","id2","id3"];
+
+// минимальный размер SVG чтобы всегда был горизонтальный скролл
+const MIN_SVG_WIDTH = 4000;
+const MIN_SVG_HEIGHT = 2000;
 
 async function loadData() {
     const res = await fetch(API_URL);
     allData = await res.json();
 
-    // ставим цвет дедам
     allData.forEach(d => {
         d.color = grandfathers.includes(d.id) ? "green" : "blue";
     });
@@ -86,19 +89,16 @@ async function loadData() {
     rootData.x0 = 0;
     rootData.y0 = 0;
 
-    // свернуть всех детей кроме корня
     if (rootData.children) rootData.children.forEach(collapse);
 
     createSvg();
     update(rootData);
 
-    // ставим скролл наверх и влево
     const container = document.getElementById("treeContainer");
     container.scrollTop = 0;
     container.scrollLeft = 0;
 }
 
-// строим дерево из плоских данных
 function buildHierarchy(data) {
     let idMap = {};
     data.forEach(d => { idMap[d.id] = {...d, children: []}; });
@@ -115,7 +115,6 @@ function buildHierarchy(data) {
     return root;
 }
 
-// сворачиваем узлы
 function collapse(d) {
     if(d.children){
         d._children = d.children;
@@ -124,14 +123,13 @@ function collapse(d) {
     }
 }
 
-// создаем svg
 function createSvg() {
     const container = d3.select("#treeContainer");
     container.selectAll("*").remove();
 
     svg = container.append("svg")
-        .attr("width", 2000)   // временно
-        .attr("height", 2000); // временно
+        .attr("width", MIN_SVG_WIDTH)
+        .attr("height", MIN_SVG_HEIGHT);
 
     g = svg.append("g")
         .attr("transform", "translate(50,50)");
@@ -139,16 +137,14 @@ function createSvg() {
     treeLayout = d3.tree().nodeSize([120, 180]);
 }
 
-// обновление дерева
 function update(source) {
     const treeData = treeLayout(rootData);
     const nodes = treeData.descendants();
     const links = treeData.links();
 
-    // нормализуем Y
     nodes.forEach(d => { d.y = d.depth * 180; });
 
-    // поднимаем дерево вверх (чтобы верх всегда был виден)
+    // поднять дерево вверх
     const minX = d3.min(nodes, d => d.x);
     nodes.forEach(d => { d.x = d.x - minX; });
 
@@ -202,15 +198,15 @@ function update(source) {
 
     nodes.forEach(d => { d.x0 = d.x; d.y0 = d.y; });
 
-    // РЕАЛЬНЫЙ размер SVG (чтобы был scroll вправо/вниз)
-    const maxX = d3.max(nodes, d => d.x) + 200;
-    const maxY = d3.max(nodes, d => d.y) + 300;
+    // РЕАЛЬНЫЕ размеры дерева
+    const maxX = d3.max(nodes, d => d.x) + 300;
+    const maxY = d3.max(nodes, d => d.y) + 400;
 
-    svg.attr("width", maxY)
-       .attr("height", maxX);
+    // делаем SVG минимум огромным чтобы всегда был скролл вправо
+    svg.attr("width", Math.max(maxY, MIN_SVG_WIDTH));
+    svg.attr("height", Math.max(maxX, MIN_SVG_HEIGHT));
 }
 
-// линия
 function diagonal(s, d) {
     return `M ${s.y + 120},${s.x + 20}
             C ${(s.y + d.y)/2 + 120},${s.x + 20}
@@ -218,7 +214,6 @@ function diagonal(s, d) {
               ${d.y},${d.x + 20}`;
 }
 
-// открыть/закрыть
 function toggleChildren(d) {
     if(d.children){
         d._children = d.children;
@@ -229,7 +224,6 @@ function toggleChildren(d) {
     }
 }
 
-// кнопка сброса
 document.getElementById("resetBtn").onclick = () => {
     if(rootData.children) rootData.children.forEach(collapse);
     update(rootData);
