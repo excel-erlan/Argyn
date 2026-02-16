@@ -6,19 +6,70 @@
 <title>Шежіре</title>
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <style>
-  body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f4f6f8; }
-  header { background: #1f2937; color: white; padding: 15px; font-size: 20px; text-align: center; font-weight: bold; }
-  #treeContainer { width: 100%; height: 90vh; overflow: auto; border-top: 1px solid #ddd; background: white; white-space: nowrap; position: relative; }
+  body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background: #f4f6f8;
+  }
+
+  header {
+    background: #1f2937;
+    color: white;
+    padding: 15px;
+    font-size: 20px;
+    text-align: center;
+    font-weight: bold;
+  }
+
+  #treeContainer {
+    width: 100%;
+    height: 90vh;
+    overflow: auto;
+    border-top: 1px solid #ddd;
+    background: white;
+    white-space: nowrap;
+    position: relative;
+  }
+
   svg { display: inline-block; }
-  .node rect { cursor: pointer; stroke: #2c3e50; stroke-width: 1.5px; }
+
+  .node rect {
+    cursor: pointer;
+    stroke: #2c3e50;
+    stroke-width: 1.5px;
+  }
+
   .green { fill: #2ecc71; }
   .blue  { fill: #3498db; }
-  .node text { font: 14px sans-serif; fill: white; text-anchor: middle; dominant-baseline: middle; pointer-events: none; }
-  .link { fill: none; stroke: #555; stroke-width: 2px; }
-  #resetBtn { margin: 10px; padding: 8px 12px; background: #1f2937; color: white; border: none; border-radius: 5px; cursor: pointer; }
+
+  .node text {
+    font: 14px sans-serif;
+    fill: white;
+    text-anchor: middle;
+    dominant-baseline: middle;
+    pointer-events: none;
+  }
+
+  .link {
+    fill: none;
+    stroke: #555;
+    stroke-width: 2px;
+  }
+
+  #resetBtn {
+    margin: 10px;
+    padding: 8px 12px;
+    background: #1f2937;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+
   #resetBtn:hover { background: #2c3e50; }
 
-  /* TOOLTIP */
+  /* TOOLTIP глобальный */
   #tooltip {
     position: absolute;
     background: white;
@@ -32,6 +83,7 @@
     width: 200px;
     text-align: center;
   }
+
   #tooltip img {
     width: 160px;
     height: 160px;
@@ -40,32 +92,45 @@
     border: 1px solid #ddd;
     margin-bottom: 8px;
   }
-  #tooltip .name { font-weight: bold; color: #111827; }
+
+  #tooltip .name {
+    font-weight: bold;
+    color: #111827;
+  }
 </style>
 </head>
 <body>
 <header>Шежіре Онлайн</header>
 <button id="resetBtn">Сбросить дерево</button>
 <div id="treeContainer"></div>
+<div id="tooltip"></div> <!-- Глобальный tooltip -->
 
 <script>
 const API_URL = "https://script.google.com/macros/s/AKfycbzPSTf_4Tdq4xq8C1pwBYrx33F28MOEYKhwgVFcJ4TP5LYFKhhCaQ8IR44EFkadCW6U/exec";
 
-let allData = [], rootData, svg, g, treeLayout;
-const duration = 400, nodeWidth = 120, nodeHeight = 40, xSpacing = 120, ySpacing = 180;
+let allData = [];
+let rootData;
+let svg, g, treeLayout;
 
-// Tooltip создаём один раз в body, чтобы не обрезался скроллом
-const tooltip = d3.select("body").append("div").attr("id", "tooltip");
+const duration = 400;
+const nodeWidth = 120;
+const nodeHeight = 40;
+const xSpacing = 120;
+const ySpacing = 180;
+
+const tooltip = d3.select("#tooltip"); // глобальный tooltip
 
 async function loadData() {
     const res = await fetch(API_URL);
     allData = await res.json();
+
     const rootObj = buildHierarchy(allData);
     rootData = d3.hierarchy(rootObj);
-    rootData.x0 = 0; rootData.y0 = 0;
+    rootData.x0 = 0;
+    rootData.y0 = 0;
 
-    // ДЕДЫ = дети корня зеленые
-    if (rootData.children) rootData.children.forEach(child => { child.data.color = "green"; });
+    // Деды = дети корня → зелёные
+    if (rootData.children) rootData.children.forEach(child => child.data.color = "green");
 
     // остальные синие
     rootData.descendants().forEach(d => { if (!d.data.color) d.data.color = "blue"; });
@@ -77,86 +142,95 @@ async function loadData() {
     update(rootData);
 
     const container = document.getElementById("treeContainer");
-    container.scrollTop = 0; container.scrollLeft = 0;
+    container.scrollTop = 0;
+    container.scrollLeft = 0;
 }
 
 function buildHierarchy(data) {
     let idMap = {};
-    data.forEach(d => { idMap[d.id] = {...d, children: []}; });
+    data.forEach(d => { idMap[d.id] = { ...d, children: [] }; });
     let root = null;
     data.forEach(d => {
-        if (!d.father_id) { root = idMap[d.id]; } 
-        else { if(idMap[d.father_id]) idMap[d.father_id].children.push(idMap[d.id]); }
+        if (d.father_id === "" || d.father_id === null) root = idMap[d.id];
+        else if (idMap[d.father_id]) idMap[d.father_id].children.push(idMap[d.id]);
     });
     return root;
 }
 
-function collapse(d) { if(d.children) { d._children = d.children; d._children.forEach(collapse); d.children = null; } }
+function collapse(d) {
+    if (d.children) { d._children = d.children; d._children.forEach(collapse); d.children = null; }
+}
 
 function createSvg() {
     const container = d3.select("#treeContainer");
     container.selectAll("svg").remove();
+
     svg = container.append("svg").attr("width", 3000).attr("height", 2000);
     g = svg.append("g").attr("transform", "translate(100,100)");
+
     treeLayout = d3.tree().nodeSize([xSpacing, ySpacing]);
 }
 
 function update(source) {
     const treeData = treeLayout(rootData);
-    const nodes = treeData.descendants(), links = treeData.links();
-    nodes.forEach(d => { d.y = d.depth * ySpacing; });
+    const nodes = treeData.descendants();
+    const links = treeData.links();
 
-    const minX = d3.min(nodes,d=>d.x), shiftDown = minX<0?Math.abs(minX)+50:0;
-    nodes.forEach(d=>d.x+=shiftDown);
+    nodes.forEach(d => d.y = d.depth * ySpacing);
+
+    // чтобы вверх не уходило
+    const minX = d3.min(nodes, d => d.x);
+    const shiftDown = minX < 0 ? Math.abs(minX) + 50 : 0;
+    nodes.forEach(d => d.x += shiftDown);
 
     // LINKS
-    const link = g.selectAll(".link").data(links,d=>d.target.data.id);
-    link.enter().append("path").attr("class","link").attr("d",d=>diagonal(source,source))
-        .transition().duration(duration).attr("d",d=>diagonal(d.source,d.target));
-    link.transition().duration(duration).attr("d",d=>diagonal(d.source,d.target));
+    const link = g.selectAll(".link").data(links, d => d.target.data.id);
+    link.enter().append("path").attr("class","link").attr("d", d=>diagonal(source, source))
+        .transition().duration(duration).attr("d", d=>diagonal(d.source,d.target));
+    link.transition().duration(duration).attr("d", d=>diagonal(d.source,d.target));
     link.exit().remove();
 
     // NODES
-    const node = g.selectAll(".node").data(nodes,d=>d.data.id);
+    const node = g.selectAll(".node").data(nodes, d=>d.data.id);
     const nodeEnter = node.enter().append("g").attr("class","node")
-        .attr("transform",d=>`translate(${source.y0},${source.x0})`)
-        .on("click",(event,d)=>{toggleChildren(d); update(d);});
-
-    nodeEnter.append("rect")
-        .attr("width", nodeWidth)
-        .attr("height", nodeHeight)
-        .attr("rx", 10).attr("ry",10)
-        .attr("class", d=>d.data.color)
-        .on("mouseover", function(event,d){ showTooltip(event,d); })
-        .on("mousemove", function(event,d){ moveTooltip(event); })
+        .attr("transform", d=>`translate(${source.y0},${source.x0})`)
+        .on("click", (event,d)=>{ toggleChildren(d); update(d); })
+        .on("mouseover", (event,d)=>showTooltip(event,d))
+        .on("mousemove", (event,d)=>moveTooltip(event))
         .on("mouseout", hideTooltip);
 
-    nodeEnter.append("text")
-        .attr("x", nodeWidth/2).attr("y", nodeHeight/2)
+    nodeEnter.append("rect").attr("width", nodeWidth).attr("height", nodeHeight)
+        .attr("rx", 10).attr("ry", 10).attr("class", d=>d.data.color);
+
+    nodeEnter.append("text").attr("x", nodeWidth/2).attr("y", nodeHeight/2)
         .text(d=>d.data.name);
 
     const nodeUpdate = nodeEnter.merge(node);
-    nodeUpdate.transition().duration(duration).attr("transform",d=>`translate(${d.y},${d.x})`);
-    nodeUpdate.select("rect").attr("class",d=>d.data.color);
+    nodeUpdate.transition().duration(duration).attr("transform", d=>`translate(${d.y},${d.x})`);
+    nodeUpdate.select("rect").attr("class", d=>d.data.color);
     node.exit().remove();
 
-    nodes.forEach(d=>{ d.x0=d.x; d.y0=d.y; });
+    nodes.forEach(d=>{ d.x0 = d.x; d.y0 = d.y; });
 
-    const maxX = d3.max(nodes,d=>d.x)+400;
-    const maxY = d3.max(nodes,d=>d.y)+600;
-    svg.attr("width",maxY).attr("height",maxX);
+    const maxX = d3.max(nodes, d=>d.x) + 400;
+    const maxY = d3.max(nodes, d=>d.y) + 600;
+    svg.attr("width", maxY).attr("height", maxX);
 }
 
-function diagonal(s,d){
-    return `M ${s.y+nodeWidth},${s.x+nodeHeight/2} C ${(s.y+d.y)/2+nodeWidth},${s.x+nodeHeight/2} ${(s.y+d.y)/2+nodeWidth},${d.x+nodeHeight/2} ${d.y},${d.x+nodeHeight/2}`;
+function diagonal(s,d) {
+    return `M ${s.y + nodeWidth},${s.x + nodeHeight/2} C ${(s.y+d.y)/2 + nodeWidth},${s.x + nodeHeight/2} ${(s.y+d.y)/2 + nodeWidth},${d.x + nodeHeight/2} ${d.y},${d.x + nodeHeight/2}`;
 }
 
-function toggleChildren(d){ if(d.children){ d._children=d.children; d.children=null; } else { d.children=d._children; d._children=null; } }
+function toggleChildren(d) {
+    if (d.children) { d._children = d.children; d.children = null; } 
+    else { d.children = d._children; d._children = null; }
+}
 
-// ===== TOOLTIP =====
-function showTooltip(event,d){
-    const foto = d.data.Foto, name = d.data.name;
-    if(foto && foto.trim()!==""){
+// ===== TOOLTIP FUNCTIONS =====
+function showTooltip(event,d) {
+    const foto = d.data.Foto;
+    const name = d.data.name;
+    if (foto && foto.trim() !== "") {
         tooltip.html(`<img src="${foto}" alt="Фото"><div class="name">${name}</div>`);
     } else {
         tooltip.html(`<div class="name">${name}</div><div style="margin-top:8px;color:#555;">Нет фото</div>`);
@@ -164,18 +238,20 @@ function showTooltip(event,d){
     tooltip.style("display","block");
     moveTooltip(event);
 }
-function moveTooltip(event){
+
+function moveTooltip(event) {
     const x = event.pageX + 15;
     const y = event.pageY + 15;
     tooltip.style("left", x + "px").style("top", y + "px");
 }
-function hideTooltip(){ tooltip.style("display","none"); }
 
-document.getElementById("resetBtn").onclick = ()=>{
-    if(rootData.children) rootData.children.forEach(collapse);
+function hideTooltip() { tooltip.style("display","none"); }
+
+document.getElementById("resetBtn").onclick = () => {
+    if (rootData.children) rootData.children.forEach(collapse);
     update(rootData);
     const container = document.getElementById("treeContainer");
-    container.scrollTop=0; container.scrollLeft=0;
+    container.scrollTop = 0; container.scrollLeft = 0;
 };
 
 loadData();
