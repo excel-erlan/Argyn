@@ -29,12 +29,10 @@
     overflow: auto;
     border-top: 1px solid #ddd;
     background: white;
-
-    /* ВАЖНО: чтобы SVG реально давал ширину */
     white-space: nowrap;
+    position: relative;
   }
 
-  /* ВАЖНО: чтобы SVG не ужимался */
   svg {
     display: inline-block;
   }
@@ -75,6 +73,35 @@
   #resetBtn:hover {
     background: #2c3e50;
   }
+
+  /* TOOLTIP */
+  #tooltip {
+    position: absolute;
+    background: white;
+    border: 2px solid #1f2937;
+    border-radius: 10px;
+    padding: 10px;
+    font-size: 14px;
+    box-shadow: 0px 5px 15px rgba(0,0,0,0.3);
+    display: none;
+    z-index: 9999;
+    width: 200px;
+    text-align: center;
+  }
+
+  #tooltip img {
+    width: 160px;
+    height: 160px;
+    object-fit: cover;
+    border-radius: 10px;
+    border: 1px solid #ddd;
+    margin-bottom: 8px;
+  }
+
+  #tooltip .name {
+    font-weight: bold;
+    color: #111827;
+  }
 </style>
 </head>
 
@@ -95,6 +122,11 @@ const nodeWidth = 120;
 const nodeHeight = 40;
 const xSpacing = 120;
 const ySpacing = 180;
+
+// Tooltip создаём один раз
+const tooltip = d3.select("#treeContainer")
+    .append("div")
+    .attr("id", "tooltip");
 
 async function loadData() {
     const res = await fetch(API_URL);
@@ -160,7 +192,7 @@ function collapse(d) {
 
 function createSvg() {
     const container = d3.select("#treeContainer");
-    container.selectAll("*").remove();
+    container.selectAll("svg").remove();
 
     svg = container.append("svg")
         .attr("width", 3000)
@@ -213,7 +245,10 @@ function update(source) {
         .on("click", (event, d) => {
             toggleChildren(d);
             update(d);
-        });
+        })
+        .on("mouseover", (event, d) => showTooltip(event, d))
+        .on("mousemove", (event, d) => moveTooltip(event))
+        .on("mouseout", hideTooltip);
 
     nodeEnter.append("rect")
         .attr("width", nodeWidth)
@@ -242,7 +277,7 @@ function update(source) {
         d.y0 = d.y;
     });
 
-    // РЕАЛЬНЫЙ РАЗМЕР SVG ДЛЯ СКРОЛЛА
+    // размер SVG
     const maxX = d3.max(nodes, d => d.x) + 400;
     const maxY = d3.max(nodes, d => d.y) + 600;
 
@@ -265,6 +300,42 @@ function toggleChildren(d) {
         d.children = d._children;
         d._children = null;
     }
+}
+
+// ===== TOOLTIP FUNCTIONS =====
+function showTooltip(event, d) {
+    const foto = d.data.Foto; // столбец Foto из таблицы
+    const name = d.data.name;
+
+    if (foto && foto.trim() !== "") {
+        tooltip.html(`
+            <img src="${foto}" alt="Фото">
+            <div class="name">${name}</div>
+        `);
+    } else {
+        tooltip.html(`
+            <div class="name">${name}</div>
+            <div style="margin-top:8px;color:#555;">Нет фото</div>
+        `);
+    }
+
+    tooltip.style("display", "block");
+    moveTooltip(event);
+}
+
+function moveTooltip(event) {
+    const container = document.getElementById("treeContainer");
+    const rect = container.getBoundingClientRect();
+
+    const x = event.clientX - rect.left + container.scrollLeft + 15;
+    const y = event.clientY - rect.top + container.scrollTop + 15;
+
+    tooltip.style("left", x + "px")
+           .style("top", y + "px");
+}
+
+function hideTooltip() {
+    tooltip.style("display", "none");
 }
 
 document.getElementById("resetBtn").onclick = () => {
