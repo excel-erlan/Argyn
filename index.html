@@ -29,11 +29,14 @@
     overflow: auto;
     border-top: 1px solid #ddd;
     background: white;
+
+    /* ВАЖНО: чтобы SVG реально давал ширину */
+    white-space: nowrap;
   }
 
-  /* ВАЖНО: svg не должен быть responsive */
+  /* ВАЖНО: чтобы SVG не ужимался */
   svg {
-    display: block;
+    display: inline-block;
   }
 
   .node rect {
@@ -115,19 +118,17 @@ async function loadData() {
         if (!d.data.color) d.data.color = "blue";
     });
 
-    // сворачиваем дерево
+    // дерево свернуто
     if (rootData.children) rootData.children.forEach(collapse);
 
     createSvg();
     update(rootData);
 
-    // скролл в самый верх влево
     const container = document.getElementById("treeContainer");
     container.scrollTop = 0;
     container.scrollLeft = 0;
 }
 
-// строим иерархию
 function buildHierarchy(data) {
     let idMap = {};
     data.forEach(d => {
@@ -149,7 +150,6 @@ function buildHierarchy(data) {
     return root;
 }
 
-// сворачивание
 function collapse(d) {
     if (d.children && d.children.length > 0) {
         d._children = d.children;
@@ -181,15 +181,12 @@ function update(source) {
         d.y = d.depth * ySpacing;
     });
 
-    // ==== ВАЖНО: если дерево ушло вверх (минусовые X) -> сдвигаем вниз ====
+    // чтобы вверх не уходило
     const minX = d3.min(nodes, d => d.x);
     const shiftDown = minX < 0 ? Math.abs(minX) + 50 : 0;
+    nodes.forEach(d => d.x = d.x + shiftDown);
 
-    nodes.forEach(d => {
-        d.x = d.x + shiftDown;
-    });
-
-    // ===== LINKS =====
+    // LINKS
     const link = g.selectAll(".link")
         .data(links, d => d.target.data.id);
 
@@ -205,7 +202,7 @@ function update(source) {
 
     link.exit().remove();
 
-    // ===== NODES =====
+    // NODES
     const node = g.selectAll(".node")
         .data(nodes, d => d.data.id);
 
@@ -245,15 +242,14 @@ function update(source) {
         d.y0 = d.y;
     });
 
-    // ===== АВТОРАЗМЕР SVG (чтобы появился скролл вправо/вниз) =====
-    const maxX = d3.max(nodes, d => d.x) + 300;
-    const maxY = d3.max(nodes, d => d.y) + 500;
+    // РЕАЛЬНЫЙ РАЗМЕР SVG ДЛЯ СКРОЛЛА
+    const maxX = d3.max(nodes, d => d.x) + 400;
+    const maxY = d3.max(nodes, d => d.y) + 600;
 
     svg.attr("width", maxY);
     svg.attr("height", maxX);
 }
 
-// линия
 function diagonal(s, d) {
     return `M ${s.y + nodeWidth},${s.x + nodeHeight/2}
             C ${(s.y + d.y)/2 + nodeWidth},${s.x + nodeHeight/2}
@@ -261,7 +257,6 @@ function diagonal(s, d) {
               ${d.y},${d.x + nodeHeight/2}`;
 }
 
-// открыть/закрыть
 function toggleChildren(d) {
     if (d.children) {
         d._children = d.children;
@@ -272,7 +267,6 @@ function toggleChildren(d) {
     }
 }
 
-// reset
 document.getElementById("resetBtn").onclick = () => {
     if (rootData.children) rootData.children.forEach(collapse);
     update(rootData);
