@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Шежіре</title>
 <script src="https://d3js.org/d3.v7.min.js"></script>
-
 <style>
   body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f4f6f8; }
   header { background: #1f2937; color: white; padding: 15px; font-size: 20px; text-align: center; font-weight: bold; }
@@ -33,7 +32,6 @@
     width: 200px;
     text-align: center;
   }
-
   #tooltip img {
     width: 160px;
     height: 160px;
@@ -42,11 +40,9 @@
     border: 1px solid #ddd;
     margin-bottom: 8px;
   }
-
   #tooltip .name { font-weight: bold; color: #111827; }
 </style>
 </head>
-
 <body>
 <header>Шежіре Онлайн</header>
 <button id="resetBtn">Сбросить дерево</button>
@@ -58,8 +54,8 @@ const API_URL = "https://script.google.com/macros/s/AKfycbzPSTf_4Tdq4xq8C1pwBYrx
 let allData = [], rootData, svg, g, treeLayout;
 const duration = 400, nodeWidth = 120, nodeHeight = 40, xSpacing = 120, ySpacing = 180;
 
-// Tooltip создаём один раз
-const tooltip = d3.select("#treeContainer").append("div").attr("id", "tooltip");
+// Tooltip создаём один раз в body, чтобы не обрезался скроллом
+const tooltip = d3.select("body").append("div").attr("id", "tooltip");
 
 async function loadData() {
     const res = await fetch(API_URL);
@@ -146,7 +142,6 @@ function update(source) {
 
     nodes.forEach(d=>{ d.x0=d.x; d.y0=d.y; });
 
-    // SVG размер под дерево
     const maxX = d3.max(nodes,d=>d.x)+400;
     const maxY = d3.max(nodes,d=>d.y)+600;
     svg.attr("width",maxY).attr("height",maxX);
@@ -163,16 +158,16 @@ function showTooltip(event,d){
     const foto = d.data.Foto, name = d.data.name;
     if(foto && foto.trim()!==""){
         tooltip.html(`<img src="${foto}" alt="Фото"><div class="name">${name}</div>`);
-    } else { tooltip.html(`<div class="name">${name}</div><div style="margin-top:8px;color:#555;">Нет фото</div>`); }
+    } else {
+        tooltip.html(`<div class="name">${name}</div><div style="margin-top:8px;color:#555;">Нет фото</div>`);
+    }
     tooltip.style("display","block");
     moveTooltip(event);
 }
 function moveTooltip(event){
-    const container = document.getElementById("treeContainer");
-    const rect = container.getBoundingClientRect();
-    const x = event.clientX - rect.left + container.scrollLeft + 15;
-    const y = event.clientY - rect.top + container.scrollTop + 15;
-    tooltip.style("left",x+"px").style("top",y+"px");
+    const x = event.pageX + 15;
+    const y = event.pageY + 15;
+    tooltip.style("left", x + "px").style("top", y + "px");
 }
 function hideTooltip(){ tooltip.style("display","none"); }
 
