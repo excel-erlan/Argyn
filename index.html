@@ -262,6 +262,44 @@ function update(source) {
         .attr("y", nodeHeight / 2)
         .text(d => d.data.name);
 
+
+
+
+  
+
+  // Tooltip с фото
+nodeEnter.on("mouseover", function(event, d) {
+    if(d.data.Foto && d.data.Foto.trim() !== "") {
+        let tooltip = d3.select("body").append("div")
+            .attr("class", "tooltip")
+            .style("position", "absolute")
+            .style("background", "#fff")
+            .style("border", "1px solid #ccc")
+            .style("padding", "5px")
+            .style("pointer-events", "none")
+            .style("z-index", 1000);
+
+        tooltip.html(`<b>${d.data.name}</b><br><img src="${d.data.Foto}" width="150">`)
+            .style("left", (event.pageX + 15) + "px")
+            .style("top", (event.pageY + 15) + "px");
+
+        d3.select(this).on("mousemove", function(event) {
+            tooltip.style("left", (event.pageX + 15) + "px")
+                   .style("top", (event.pageY + 15) + "px");
+        }).on("mouseout", function() {
+            tooltip.remove();
+        });
+    }
+});
+
+
+
+
+
+
+
+  
+
     const nodeUpdate = nodeEnter.merge(node);
 
     nodeUpdate.transition().duration(duration)
@@ -351,3 +389,4 @@ loadData();
 </script>
 </body>
 </html>
+
