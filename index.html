@@ -130,7 +130,12 @@ async function loadData() {
     rootData.y0 = 0;
 
     // Деды = дети корня → зелёные
-    if (rootData.children) rootData.children.forEach(child => child.data.color = "green");
+    if (rootData.children) {
+    rootData.children.forEach(child => {
+        if (child.data.name === "Шағырай") child.data.color = "green";
+        else child.data.color = "blue";
+    });
+}
 
     // остальные синие
     rootData.descendants().forEach(d => { if (!d.data.color) d.data.color = "blue"; });
@@ -258,3 +263,4 @@ loadData();
 </script>
 </body>
 </html>
+
