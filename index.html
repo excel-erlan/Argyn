@@ -236,74 +236,30 @@ function update(source) {
 
 
 
-
-
  
+ nodeEnter.append("rect")
+    .attr("width", nodeWidth)
+    .attr("height", nodeHeight)
+    .attr("rx", 14)
+    .attr("ry", 14)
+    .attr("fill", d => d.data.color === "green" ? "#2ecc71" : "#3498db")
+    .attr("stroke", "#5c3a1e")
+    .attr("stroke-width", 2)
+    .attr("filter", "url(#shadow)")
+    .attr("opacity", 0.95);
+
+// орнамент сверху рамки
 nodeEnter.append("rect")
     .attr("width", nodeWidth)
     .attr("height", nodeHeight)
-    .attr("rx", 10)
-    .attr("ry", 10)
-    .attr("fill", d => d.data.color === "green" ? "#2ecc71" : "#3498db")
-    .attr("stroke", "#5c3a1e")
-    .attr("stroke-width", 2);
-
-// верхний орнамент рамки (қошқар мүйіз)
-nodeEnter.append("path")
-    .attr("d", `
-        M5 5 
-        Q15 -5 25 5 
-        T45 5 
-        T65 5 
-        T85 5 
-        T105 5
-    `)
-    .attr("stroke", "#5c3a1e")
-    .attr("stroke-width", 2)
-    .attr("fill", "none");
-
-// нижний орнамент
-nodeEnter.append("path")
-    .attr("d", `
-        M5 ${nodeHeight-5}
-        Q15 ${nodeHeight+5} 25 ${nodeHeight-5}
-        T45 ${nodeHeight-5}
-        T65 ${nodeHeight-5}
-        T85 ${nodeHeight-5}
-        T105 ${nodeHeight-5}
-    `)
-    .attr("stroke", "#5c3a1e")
-    .attr("stroke-width", 2)
-    .attr("fill", "none");
-
-// левый орнамент
-nodeEnter.append("path")
-    .attr("d", `
-        M5 5
-        Q-5 15 5 25
-        T5 45
-    `)
-    .attr("stroke", "#5c3a1e")
-    .attr("stroke-width", 2)
-    .attr("fill", "none");
-
-// правый орнамент
-nodeEnter.append("path")
-    .attr("d", `
-        M${nodeWidth-5} 5
-        Q${nodeWidth+5} 15 ${nodeWidth-5} 25
-        T${nodeWidth-5} 45
-    `)
-    .attr("stroke", "#5c3a1e")
-    .attr("stroke-width", 2)
-    .attr("fill", "none");
-
-
-
-
-
+    .attr("rx", 14)
+    .attr("ry", 14)
+    .attr("fill", "url(#kazakhPattern)")
+    .attr("pointer-events", "none")
+    .attr("opacity", 0.35);
 
  
+
  
 
     nodeEnter.append("text").attr("x", nodeWidth/2).attr("y", nodeHeight/2)
