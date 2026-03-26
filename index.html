@@ -177,7 +177,33 @@ function createSvg() {
     svg = container.append("svg").attr("width", 3000).attr("height", 2000);
     g = svg.append("g").attr("transform", "translate(100,100)");
 
-    treeLayout = d3.tree().nodeSize([xSpacing, ySpacing]);
+ 
+ // ===== КАЗАХСКИЙ ОРНАМЕНТ =====
+const defs = svg.append("defs");
+
+// тень
+const filter = defs.append("filter")
+    .attr("id", "shadow");
+
+filter.append("feDropShadow")
+    .attr("dx", 1)
+    .attr("dy", 1)
+    .attr("stdDeviation", 2);
+
+// узор "қошқар мүйіз"
+const pattern = defs.append("pattern")
+    .attr("id", "kazakhPattern")
+    .attr("patternUnits", "userSpaceOnUse")
+    .attr("width", 40)
+    .attr("height", 40);
+
+pattern.append("path")
+    .attr("d", "M0 20 Q10 0 20 20 T40 20 M0 40 Q10 20 20 40 T40 40")
+    .attr("stroke", "#8b5a2b")
+    .attr("stroke-width", 1.2)
+    .attr("fill", "none");
+   
+ treeLayout = d3.tree().nodeSize([xSpacing, ySpacing]);
 }
 
 function update(source) {
@@ -208,8 +234,27 @@ function update(source) {
         .on("mousemove", (event,d)=>moveTooltip(event))
         .on("mouseout", hideTooltip);
 
-    nodeEnter.append("rect").attr("width", nodeWidth).attr("height", nodeHeight)
-        .attr("rx", 10).attr("ry", 10).attr("class", d=>d.data.color);
+  nodeEnter.append("rect")
+    .attr("width", nodeWidth)
+    .attr("height", nodeHeight)
+    .attr("rx", 14)
+    .attr("ry", 14)
+    .attr("fill", d => d.data.color === "green" ? "#2ecc71" : "#3498db")
+    .attr("stroke", "#5c3a1e")
+    .attr("stroke-width", 2)
+    .attr("filter", "url(#shadow)")
+    .attr("opacity", 0.95);
+
+// орнамент сверху рамки
+nodeEnter.append("rect")
+    .attr("width", nodeWidth)
+    .attr("height", nodeHeight)
+    .attr("rx", 14)
+    .attr("ry", 14)
+    .attr("fill", "url(#kazakhPattern)")
+    .attr("pointer-events", "none")
+    .attr("opacity", 0.35);
+ 
 
     nodeEnter.append("text").attr("x", nodeWidth/2).attr("y", nodeHeight/2)
         .text(d=>d.data.name);
