@@ -145,7 +145,7 @@ async function loadData() {
     rootData.descendants().forEach(d => { if (!d.data.color) d.data.color = "blue"; });
 
     // дерево свернуто
-    if (rootData.children) rootData.children.forEach(collapse);
+    collapse(rootData);
 
     createSvg();
     update(rootData);
