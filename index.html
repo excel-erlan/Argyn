@@ -118,7 +118,7 @@ let svg, g, treeLayout;
 
 const duration = 400;
 const nodeWidth = 120;
-const nodeHeight = 60;
+const nodeHeight = 40;
 const xSpacing = 120;
 const ySpacing = 180;
 
@@ -266,11 +266,13 @@ nodeEnter.append("text")
 
         const words = (d.data.name || "").split(" ");
 
-        words.forEach((word, i) => {
+        const visibleWords = words.slice(0, 2);
+
+        visibleWords.forEach((word, i) => {
             text.append("tspan")
                 .attr("x", nodeWidth / 2)
                 .attr("y", nodeHeight / 2)
-                .attr("dy", (i - (words.length - 1) / 2) * 16)
+                .attr("dy", i === 0 ? -8 : 16)
                 .text(word);
         });
 
