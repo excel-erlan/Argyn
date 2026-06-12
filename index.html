@@ -257,53 +257,10 @@ nodeEnter.append("rect")
 
  
 
-nodeEnter.append("text")
-    .attr("x", nodeWidth / 2)
-    .attr("y", nodeHeight / 2)
-    .attr("text-anchor", "middle")
-    .attr("dominant-baseline", "middle")
-    .each(function(d) {
-
-        const text = d3.select(this);
-        const words = (d.data.name || "").split(" ");
-
-        let line = [];
-        let lineNumber = 0;
-        const maxWidth = nodeWidth - 10;
-
-        const test = text.append("tspan")
-            .attr("x", nodeWidth / 2)
-            .attr("dy", 0)
-            .text("");
-
-        words.forEach(word => {
-
-            line.push(word);
-            test.text(line.join(" "));
-
-            if (test.node().getComputedTextLength() > maxWidth) {
-
-                line.pop();
-
-                text.append("tspan")
-                    .attr("x", nodeWidth / 2)
-                    .attr("dy", lineNumber === 0 ? -8 : 16)
-                    .text(line.join(" "));
-
-                line = [word];
-                lineNumber++;
-            }
-        });
-
-        text.append("tspan")
-            .attr("x", nodeWidth / 2)
-            .attr("dy", lineNumber === 0 ? 5 : 16)
-            .text(line.join(" "));
-    });
-
-
-
  
+
+    nodeEnter.append("text").attr("x", nodeWidth/2).attr("y", nodeHeight/2)
+        .text(d=>d.data.name);
 
     const nodeUpdate = nodeEnter.merge(node);
     nodeUpdate.transition().duration(duration).attr("transform", d=>`translate(${d.y},${d.x})`);
