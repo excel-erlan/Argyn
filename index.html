@@ -118,7 +118,7 @@ let svg, g, treeLayout;
 
 const duration = 400;
 const nodeWidth = 120;
-const nodeHeight = 40;
+const nodeHeight = 60;
 const xSpacing = 120;
 const ySpacing = 180;
 
@@ -257,10 +257,28 @@ nodeEnter.append("rect")
 
  
 
- 
+nodeEnter.append("text")
+    .attr("text-anchor", "middle")
+    .attr("dominant-baseline", "middle")
+    .each(function(d) {
 
-    nodeEnter.append("text").attr("x", nodeWidth/2).attr("y", nodeHeight/2)
-        .text(d=>d.data.name);
+        const text = d3.select(this);
+
+        const words = (d.data.name || "").split(" ");
+
+        words.forEach((word, i) => {
+            text.append("tspan")
+                .attr("x", nodeWidth / 2)
+                .attr("y", nodeHeight / 2)
+                .attr("dy", (i - (words.length - 1) / 2) * 16)
+                .text(word);
+        });
+
+    });
+
+
+
+ 
 
     const nodeUpdate = nodeEnter.merge(node);
     nodeUpdate.transition().duration(duration).attr("transform", d=>`translate(${d.y},${d.x})`);
