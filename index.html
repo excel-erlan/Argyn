@@ -133,9 +133,9 @@ async function loadData() {
     rootData.x0 = 0;
     rootData.y0 = 0;
 
-    // Цвет берем из таблицы
+   // цвет берем из таблицы
 rootData.descendants().forEach(d => {
-    d.data.color = d.data.color || "blue";
+    d.data.color = (d.data.color || "blue").trim().toLowerCase();
 });
 
     // остальные синие
